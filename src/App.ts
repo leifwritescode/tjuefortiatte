@@ -9,27 +9,21 @@ export type Move = "up" | "down" | "left" | "right"
 
 type MoveResult = number | "invalid" | "game_over"
 
-
 export const BOARD_WIDTH = 4
 export const BOARD_HEIGHT = 4;
 
 const USR_VALUE = 0;
 const USR_SETTER = 1;
 
-/*
-gameplay works by using arrow keys to manipulate the board
-up moves all pieces up, down moves down, etc etc
-if two pieces are adjacent and equal, they merge into one piece
-if a piece is moved, a new piece is spawned in an empty space
-*/
-
 export class TwentyFortyEightGame {
   private _board: UseStateResult<number>[]
   private _score: UseStateResult<number>
+  private _lastSpawned: UseStateResult<Coordinate>
 
   constructor({ useState }: Context) {
     this._board = Array.from(new Array(BOARD_HEIGHT * BOARD_WIDTH), () => useState(-1))
     this._score = useState(0)
+    this._lastSpawned = useState({ x: -1, y: -1 })
   }
 
   setup() {
@@ -54,6 +48,9 @@ export class TwentyFortyEightGame {
 
     this._score[0] = 0
     this._score[1](0)
+
+    this._lastSpawned[0] = { x: -1, y: -1 }
+    this._lastSpawned[1]({ x: -1, y: -1 })
   }
 
   play(move: Move) : MoveResult {
@@ -77,6 +74,8 @@ export class TwentyFortyEightGame {
       case "right":
         result = this.moveRight()
         break
+      default:
+        throw new Error("Invalid move")
     }
 
     // if the result is a number, then one or more valid moves were made
@@ -86,6 +85,7 @@ export class TwentyFortyEightGame {
       this._score[USR_VALUE] = newScore
       this._score[USR_SETTER](newScore)
     }
+
     // an invalid result means nothing should spawn -- the board state wasn't changed
     else if (result === "invalid") {
       return result;
@@ -99,7 +99,13 @@ export class TwentyFortyEightGame {
     }
 
     // spawn a new piece
-    this.setCell(2, { x: randomIndex % BOARD_WIDTH, y: Math.floor(randomIndex / BOARD_WIDTH) })
+    // todo if the board state doesn't change, then we shouldn't spawn a new piece
+    const x = randomIndex % BOARD_WIDTH
+    const y = Math.floor(randomIndex / BOARD_WIDTH)
+    this.setCell(2, { x, y })
+    this._lastSpawned[USR_VALUE] = { x, y }
+    this._lastSpawned[USR_SETTER]({ x, y })
+
 
     // determine if the game is over
     const validTransitions = this.determineValidStateTransitions();
@@ -129,6 +135,10 @@ export class TwentyFortyEightGame {
   isGameOver(): boolean {
     const validTransitions = this.determineValidStateTransitions();
     return !this.anyValidMoves(validTransitions);
+  }
+
+  isLastSpawned(cell: Coordinate) {
+    return this._lastSpawned[USR_VALUE].x === cell.x && this._lastSpawned[USR_VALUE].y === cell.y
   }
 
   private moveUp() : MoveResult {
