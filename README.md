@@ -1,4 +1,4 @@
-# Tjueføriåtte
+# Tjueførtiåtte
 
 That's 2048, in Norwegian.
 
