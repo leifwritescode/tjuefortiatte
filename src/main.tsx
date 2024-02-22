@@ -1,5 +1,6 @@
 import { Devvit } from '@devvit/public-api'
 import { TwentyFortyEightGame } from './App.js'
+import { ControlBox, GameBoard, ScoreBox } from './Components.js'
 
 const backgroundColors: { [key: number]: string } = {
   [2]: 'khaki',
@@ -154,7 +155,7 @@ Devvit.addCustomPostType({
     })
 
     if (game.isGameOver()) {
-      const currentScore = game.getScore()
+      const currentScore = game.score
       const currentBest = playerBestScore[0]
       if (currentScore > currentBest) {
         const score = `${currentScore}`
@@ -165,7 +166,7 @@ Devvit.addCustomPostType({
         <hstack backgroundColor='wheat' grow alignment='middle center'>
           <vstack gap='medium'>
             <text color='black' weight='bold' size='xxlarge' alignment='center'>Game Over!</text>
-            <text color='black' weight='bold' size='xlarge' alignment='center'>You scored {game.getScore()} points.</text>
+            <text color='black' weight='bold' size='xlarge' alignment='center'>You scored {game.score} points.</text>
             <button onPress={() => game.reset()}>Just One More?</button>
           </vstack>
         </hstack>
@@ -179,52 +180,16 @@ Devvit.addCustomPostType({
                 <button appearance='destructive' onPress={() => game.reset()}>Reset</button>
               </vstack>
               <spacer grow />
-              <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
-                <text color='white' weight='bold' alignment='middle'>Score</text>
-                <text color='white' weight='bold' alignment='middle'>{game.getScore()}</text>
-              </vstack>
-              <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
-                <text color='white' weight='bold' alignment='middle'>Your Best</text>
-                <text color='white' weight='bold' alignment='middle'>{playerBestScore[0]}</text>
-              </vstack>
-              <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
-                <text color='white' weight='bold' alignment='middle'>All Time Best</text>
-                <text color='white' weight='bold' alignment='middle'>{allTimeHighScore[0]}</text>
-              </vstack>
+              <ScoreBox title='Score' score={game.score} />
+              <ScoreBox title='Your Best' score={playerBestScore[0]} />
+              <ScoreBox title='All Time Best' score={allTimeHighScore[0]} />
             </hstack>
             <hstack alignment='middle center' grow>
               <spacer grow />
-              <vstack backgroundColor='Burlywood' gap='small' alignment='middle' padding='small' cornerRadius='medium'> 
-                { game.getRows().map((row, y) => (
-                  <hstack gap="small" alignment="middle">
-                    { row.map((cell, x) => (
-                      <vstack
-                        width="48px"
-                        height="48px"
-                        cornerRadius='small'
-                        backgroundColor={getBackgroundColour(cell)}
-                        alignment="middle"
-                        border={game.isLastSpawned({ x, y }) ? 'thick' : 'none'}
-                        borderColor={getContrastColour(cell)}
-                      >
-                        <text style="heading" size="large" alignment='center' color={getTextColour(cell)} weight='bold'>
-                          {cell === -1 ? '' : cell}
-                        </text>
-                      </vstack>
-                    ))}
-                  </hstack>
-                )) }
-              </vstack>
+              <GameBoard game={game} />
               <spacer grow />
             </hstack>
-            <hstack grow alignment='middle center' gap='small'>
-              <button icon='back' onPress={() => game.testPlay('left')}></button>
-              <vstack gap='medium'>
-                <button icon='up-arrow' onPress={() => game.testPlay('up')}></button>
-                <button icon='down-arrow' onPress={() => game.testPlay('down')}></button>
-              </vstack>
-              <button icon='forward' onPress={() => game.testPlay('right')}></button>
-            </hstack>
+            <ControlBox game={game} />
           </vstack>
         </vstack>
       )
