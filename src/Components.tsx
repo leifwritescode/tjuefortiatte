@@ -8,12 +8,14 @@ const backgroundColors: { [key: number]: string } = {
   [16]: 'darkorange',
   [32]: 'orangered',
   [64]: 'red',
+
   [128]: 'lightcoral',
   [256]: 'firebrick',
   [512]: 'maroon',
   [1024]: 'darkred',
   [2048]: 'hotpink',
   [4096]: 'deeppink',
+
   [8192]: 'mediumvioletred',
   [16384]: 'blueviolet',
   [32768]: 'purple',
@@ -28,12 +30,14 @@ const textColors: { [key: number]: string } = {
   [16]: 'black',
   [32]: 'black',
   [64]: 'black',
+
   [128]: 'black',
   [256]: 'black',
   [512]: 'black',
   [1024]: 'black',
   [2048]: 'black',
   [4096]: 'black',
+
   [8192]: 'white',
   [16384]: 'white',
   [32768]: 'white',
@@ -48,12 +52,14 @@ const contrastColors: { [key: number]: string } = {
   [16]: 'black',
   [32]: 'black',
   [64]: 'black',
+
   [128]: 'black',
   [256]: 'black',
   [512]: 'black',
   [1024]: 'black',
   [2048]: 'black',
   [4096]: 'black',
+
   [8192]: 'white',
   [16384]: 'white',
   [32768]: 'white',
@@ -156,12 +162,12 @@ export const ControlBox = (props: ControlBoxProps) => {
   const { game } = props;
   return (
     <hstack grow alignment='middle center' gap='small'>
-      <button icon='back' size='large' appearance='secondary' onPress={() => game.testPlay('left')}></button>
+      <button icon='back' size='large' appearance='secondary' onPress={() => game.play('left')}></button>
       <vstack gap='medium'>
-        <button icon='up-arrow' size='large' appearance='secondary' onPress={() => game.testPlay('up')}></button>
-        <button icon='down-arrow' size='large' appearance='secondary'  onPress={() => game.testPlay('down')}></button>
+        <button icon='up-arrow' size='large' appearance='secondary' onPress={() => game.play('up')}></button>
+        <button icon='down-arrow' size='large' appearance='secondary'  onPress={() => game.play('down')}></button>
       </vstack>
-      <button icon='forward' size='large' appearance='secondary'  onPress={() => game.testPlay('right')}></button>
+      <button icon='forward' size='large' appearance='secondary'  onPress={() => game.play('right')}></button>
     </hstack>
   )
 }
