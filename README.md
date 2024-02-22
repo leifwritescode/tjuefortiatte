@@ -2,6 +2,12 @@
 
 That's 2048, in Norwegian.
 
-This is 2048, except it's made with Devvit, and it is shitty.
+This repo is also 2048
 
-I hope you enjoy, and I am sorry for your loss.
+I hacked it together in an hour. It's a little game using Devvit Custom Posts.
+
+And it is supremely shitty.
+
+I hope you enjoy.
+
+And I am sorry for your loss.
