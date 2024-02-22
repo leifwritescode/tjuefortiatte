@@ -1,7 +1,7 @@
 import { Devvit } from '@devvit/public-api'
 import { TwentyFortyEightGame } from './App.js'
 
-const colors: { [key: number]: string } = {
+const backgroundColors: { [key: number]: string } = {
   [2]: 'khaki',
   [4]: 'gold',
   [8]: 'orange',
@@ -14,13 +14,74 @@ const colors: { [key: number]: string } = {
   [1024]: 'darkred',
   [2048]: 'hotpink',
   [4096]: 'deeppink',
+  [8192]: 'mediumvioletred',
+  [16384]: 'blueviolet',
+  [32768]: 'purple',
+  [65536]: 'indigo',
+  [131072]: 'black',
 }
 
-const getColor = (value: number) => {
+const textColors: { [key: number]: string } = {
+  [2]: 'black',
+  [4]: 'black',
+  [8]: 'black',
+  [16]: 'black',
+  [32]: 'black',
+  [64]: 'black',
+  [128]: 'black',
+  [256]: 'black',
+  [512]: 'black',
+  [1024]: 'black',
+  [2048]: 'black',
+  [4096]: 'black',
+  [8192]: 'white',
+  [16384]: 'white',
+  [32768]: 'white',
+  [65536]: 'white',
+  [131072]: 'white'
+}
+
+const contrastColors: { [key: number]: string } = {
+  [2]: 'black',
+  [4]: 'black',
+  [8]: 'black',
+  [16]: 'black',
+  [32]: 'black',
+  [64]: 'black',
+  [128]: 'black',
+  [256]: 'black',
+  [512]: 'black',
+  [1024]: 'black',
+  [2048]: 'black',
+  [4096]: 'black',
+  [8192]: 'white',
+  [16384]: 'white',
+  [32768]: 'white',
+  [65536]: 'white',
+  [131072]: 'white'
+}
+
+const getBackgroundColour = (value: number) => {
   if (value < 0) {
     return 'Tan'
   }
-  return colors[value] || 'deeppink'
+  return backgroundColors[value] || 'deeppink'
+}
+
+const getTextColour = (value: number) => {
+  if (value < 0) {
+    return 'black'
+  }
+
+  return textColors[value] || 'white'
+}
+
+const getContrastColour = (value: number) => {
+  if (value < 0) {
+    return 'black'
+  }
+
+  return contrastColors[value] || 'black'
 }
 
 Devvit.configure({
@@ -111,58 +172,60 @@ Devvit.addCustomPostType({
       )
     } else {
       return (
-        <vstack backgroundColor='Wheat' cornerRadius="medium" padding='medium' grow>
-          <hstack gap='small'>
-            <vstack alignment='middle'>
-              <button appearance='destructive' onPress={() => game.reset()}>Reset</button>
-            </vstack>
-            <spacer grow />
-            <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
-              <text color='white' weight='bold' alignment='middle'>Score</text>
-              <text color='white' weight='bold' alignment='middle'>{game.getScore()}</text>
-            </vstack>
-            <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
-              <text color='white' weight='bold' alignment='middle'>Your Best</text>
-              <text color='white' weight='bold' alignment='middle'>{playerBestScore[0]}</text>
-            </vstack>
-            <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
-              <text color='white' weight='bold' alignment='middle'>All Time Best</text>
-              <text color='white' weight='bold' alignment='middle'>{allTimeHighScore[0]}</text>
-            </vstack>
-          </hstack>
-          <hstack alignment='middle center' grow>
-            <spacer grow />
-            <vstack backgroundColor='Burlywood' gap='small' alignment='middle' padding='small' cornerRadius='medium'> 
-              { game.getRows().map((row, y) => (
-                <hstack gap="small" alignment="middle">
-                  { row.map((cell, x) => (
-                    <vstack
-                      width="48px"
-                      height="48px"
-                      cornerRadius='small'
-                      backgroundColor={getColor(cell)}
-                      alignment="middle"
-                      border={game.isLastSpawned({ x, y }) ? 'thick' : 'none'}
-                      borderColor='darkgrey'
-                    >
-                      <text style="heading" size="large" alignment='center' color='black' weight='bold'>
-                        {cell === -1 ? '' : cell}
-                      </text>
-                    </vstack>
-                  ))}
-                </hstack>
-              )) }
-            </vstack>
-            <spacer grow />
-          </hstack>
-          <hstack grow alignment='middle center' gap='small'>
-            <button icon='back' onPress={() => game.testPlay('left')}></button>
-            <vstack gap='medium'>
-              <button icon='up-arrow' onPress={() => game.testPlay('up')}></button>
-              <button icon='down-arrow' onPress={() => game.testPlay('down')}></button>
-            </vstack>
-            <button icon='forward' onPress={() => game.testPlay('right')}></button>
-          </hstack>
+        <vstack backgroundColor='NavajoWhite' cornerRadius="medium" padding='medium' grow>
+          <vstack backgroundColor='wheat' cornerRadius='medium' padding='medium' border='thin' borderColor='Tan' grow>
+            <hstack gap='small'>
+              <vstack alignment='middle'>
+                <button appearance='destructive' onPress={() => game.reset()}>Reset</button>
+              </vstack>
+              <spacer grow />
+              <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
+                <text color='white' weight='bold' alignment='middle'>Score</text>
+                <text color='white' weight='bold' alignment='middle'>{game.getScore()}</text>
+              </vstack>
+              <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
+                <text color='white' weight='bold' alignment='middle'>Your Best</text>
+                <text color='white' weight='bold' alignment='middle'>{playerBestScore[0]}</text>
+              </vstack>
+              <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
+                <text color='white' weight='bold' alignment='middle'>All Time Best</text>
+                <text color='white' weight='bold' alignment='middle'>{allTimeHighScore[0]}</text>
+              </vstack>
+            </hstack>
+            <hstack alignment='middle center' grow>
+              <spacer grow />
+              <vstack backgroundColor='Burlywood' gap='small' alignment='middle' padding='small' cornerRadius='medium'> 
+                { game.getRows().map((row, y) => (
+                  <hstack gap="small" alignment="middle">
+                    { row.map((cell, x) => (
+                      <vstack
+                        width="48px"
+                        height="48px"
+                        cornerRadius='small'
+                        backgroundColor={getBackgroundColour(cell)}
+                        alignment="middle"
+                        border={game.isLastSpawned({ x, y }) ? 'thick' : 'none'}
+                        borderColor={getContrastColour(cell)}
+                      >
+                        <text style="heading" size="large" alignment='center' color={getTextColour(cell)} weight='bold'>
+                          {cell === -1 ? '' : cell}
+                        </text>
+                      </vstack>
+                    ))}
+                  </hstack>
+                )) }
+              </vstack>
+              <spacer grow />
+            </hstack>
+            <hstack grow alignment='middle center' gap='small'>
+              <button icon='back' onPress={() => game.testPlay('left')}></button>
+              <vstack gap='medium'>
+                <button icon='up-arrow' onPress={() => game.testPlay('up')}></button>
+                <button icon='down-arrow' onPress={() => game.testPlay('down')}></button>
+              </vstack>
+              <button icon='forward' onPress={() => game.testPlay('right')}></button>
+            </hstack>
+          </vstack>
         </vstack>
       )
     }
