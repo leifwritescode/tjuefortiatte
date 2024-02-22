@@ -1,4 +1,4 @@
-import { Context, UseStateResult, User } from "@devvit/public-api";
+import { Context, UseStateResult } from "@devvit/public-api";
 
 interface Coordinate {
   x: number,
@@ -58,7 +58,7 @@ export class TwentyFortyEightGame {
     this.lastSpawnedAt = { x: -1, y: -1 }
   }
 
-  play(move: Move) : MoveResult {
+  play(move: Move) {
     // process the given movement
     // and return the score 
     // score increases when two pieces merge by the value of the new piece
@@ -119,10 +119,6 @@ export class TwentyFortyEightGame {
     }
 
     return result
-  }
-
-  testPlay(move: Move) {
-    this.play(move)
   }
 
   get score(): number {
