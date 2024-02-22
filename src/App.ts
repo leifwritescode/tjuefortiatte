@@ -1,4 +1,4 @@
-import { Context, UseStateResult } from "@devvit/public-api";
+import { Context, UseStateResult, User } from "@devvit/public-api";
 
 interface Coordinate {
   x: number,
@@ -15,42 +15,47 @@ export const BOARD_HEIGHT = 4;
 const USR_VALUE = 0;
 const USR_SETTER = 1;
 
+/**
+ * I should modify the board state to be a simple array of numbers, as a first goal
+
+ */
+
 export class TwentyFortyEightGame {
-  private _board: UseStateResult<number>[]
+  private _board: UseStateResult<number[]>
   private _score: UseStateResult<number>
-  private _lastSpawned: UseStateResult<Coordinate>
+  private _lastSpawnedAt: UseStateResult<Coordinate>
 
   constructor({ useState }: Context) {
-    this._board = Array.from(new Array(BOARD_HEIGHT * BOARD_WIDTH), () => useState(-1))
+    this._board = useState(new Array(BOARD_WIDTH * BOARD_HEIGHT).fill(-1))
     this._score = useState(0)
-    this._lastSpawned = useState({ x: -1, y: -1 })
+    this._lastSpawnedAt = useState({ x: -1, y: -1 })
   }
 
   setup() {
     // set the initial state of the board
-    if (this._board.every((value) => value[USR_VALUE] === -1)) {
+    if (this.board.every((value) => value === -1)) {
       const a = this.findRandomIndex()
       const b = this.findRandomIndex();
 
-      this.setCell(2, { x: a! % BOARD_WIDTH, y: Math.floor(a! / BOARD_WIDTH) })
-      this.setCell(2, { x: b! % BOARD_WIDTH, y: Math.floor(b! / BOARD_WIDTH) })
+      let newBoard = this.board;
+      newBoard[a!] = 2
+      newBoard[b!] = 2
+
+      this.board = newBoard
     }
   }
 
   reset() {
     for (var y = 0; y < 4; y++) {
       for (var x = 0; x < 4; x++) {
-        this.setCell(-1, { x, y })
+        this.setCell({ x, y }, -1)
       }
     }
 
     this.setup()
 
-    this._score[0] = 0
-    this._score[1](0)
-
-    this._lastSpawned[0] = { x: -1, y: -1 }
-    this._lastSpawned[1]({ x: -1, y: -1 })
+    this.score = 0;
+    this.lastSpawnedAt = { x: -1, y: -1 }
   }
 
   play(move: Move) : MoveResult {
@@ -78,12 +83,13 @@ export class TwentyFortyEightGame {
         throw new Error("Invalid move")
     }
 
+    // force-save the board state
+    this.updateBoard();
+
     // if the result is a number, then one or more valid moves were made
     // we can guarantee that a new piece can spawn under this condition
     if (typeof result === "number") {
-      const newScore = this._score[USR_VALUE] + result
-      this._score[USR_VALUE] = newScore
-      this._score[USR_SETTER](newScore)
+      this.score += result
     }
 
     // an invalid result means nothing should spawn -- the board state wasn't changed
@@ -102,9 +108,8 @@ export class TwentyFortyEightGame {
     // todo if the board state doesn't change, then we shouldn't spawn a new piece
     const x = randomIndex % BOARD_WIDTH
     const y = Math.floor(randomIndex / BOARD_WIDTH)
-    this.setCell(2, { x, y })
-    this._lastSpawned[USR_VALUE] = { x, y }
-    this._lastSpawned[USR_SETTER]({ x, y })
+    this.setCell({ x, y }, 2)
+    this.lastSpawnedAt = { x, y }
 
 
     // determine if the game is over
@@ -120,16 +125,51 @@ export class TwentyFortyEightGame {
     this.play(move)
   }
 
-  getRows(): number[][] {
-    const rows: number[][] = [];
-    for (let i = 0; i < BOARD_HEIGHT; i++) {
-      rows.push(this._board.slice(i * BOARD_WIDTH, (i + 1) * BOARD_WIDTH).map((value) => value[USR_VALUE]));
-    }
-    return rows;
+  get score(): number {
+    return this._score[USR_VALUE]
   }
 
-  getScore(): number {
-    return this._score[USR_VALUE];
+  private set score(value: number) {
+    this._score[USR_VALUE] = value
+    this._score[USR_SETTER](value)
+  }
+
+  private get board(): number[] {
+    return this._board[USR_VALUE]
+  }
+
+  private set board(value: number[]) {
+    this._board[USR_VALUE] = value
+    this._board[USR_SETTER](value)
+  }
+
+  private get lastSpawnedAt(): Coordinate {
+    return this._lastSpawnedAt[USR_VALUE]
+  }
+
+  private set lastSpawnedAt(value: Coordinate) {
+    this._lastSpawnedAt[USR_VALUE] = value
+    this._lastSpawnedAt[USR_SETTER](value)
+  }
+
+  private getCell(coordinate: Coordinate) {
+    return this.board[coordinate.y * BOARD_WIDTH + coordinate.x]
+  }
+
+  private setCell(coordinate: Coordinate, value: number) {
+    this.board[coordinate.y * BOARD_WIDTH + coordinate.x] = value
+  }
+
+  private updateBoard() {
+    this._board[USR_SETTER](this._board[USR_VALUE])
+  }
+
+  getRows(): number[][] {
+    const rows: number[][] = []; 
+    for (let i = 0; i < BOARD_HEIGHT; i++) {
+      rows.push(this.board.slice(i * BOARD_WIDTH, (i + 1) * BOARD_WIDTH));
+    }
+    return rows;
   }
 
   isGameOver(): boolean {
@@ -138,7 +178,7 @@ export class TwentyFortyEightGame {
   }
 
   isLastSpawned(cell: Coordinate) {
-    return this._lastSpawned[USR_VALUE].x === cell.x && this._lastSpawned[USR_VALUE].y === cell.y
+    return this.lastSpawnedAt.x === cell.x && this.lastSpawnedAt.y === cell.y
   }
 
   private moveUp() : MoveResult {
@@ -163,16 +203,16 @@ export class TwentyFortyEightGame {
 
           // if the piece above is empty, move the current piece up
           if (otherCellValue === -1) {
-            this.setCell(thisCellValue, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, thisCellValue, )
+            this.setCell(yx, -1)
             noMoreMoves = false;
           }
 
           // if the piece above is the same, merge the two pieces
           if (otherCellValue === thisCellValue) {
             const delta = thisCellValue * 2
-            this.setCell(delta, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, delta)
+            this.setCell(yx, -1)
             noMoreMoves = false;
             score += delta
           }
@@ -205,16 +245,16 @@ export class TwentyFortyEightGame {
 
           // if the piece above is empty, move the current piece up
           if (otherCellValue === -1) {
-            this.setCell(thisCellValue, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, thisCellValue)
+            this.setCell(yx, -1)
             noMoreMoves = false;
           }
 
           // if the piece above is the same, merge the two pieces
           if (otherCellValue === thisCellValue) {
             const delta = thisCellValue * 2
-            this.setCell(delta, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, delta)
+            this.setCell(yx, -1)
             noMoreMoves = false;
             score += delta
           }
@@ -246,16 +286,16 @@ export class TwentyFortyEightGame {
 
           // if the piece above is empty, move the current piece up
           if (otherCellValue === -1) {
-            this.setCell(thisCellValue, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, thisCellValue)
+            this.setCell(yx, -1)
             noMoreMoves = false;
           }
 
           // if the piece above is the same, merge the two pieces
           if (otherCellValue === thisCellValue) {
             const delta = thisCellValue * 2
-            this.setCell(thisCellValue * 2, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, delta)
+            this.setCell(yx, -1)
             noMoreMoves = false;
             score += delta
           }
@@ -287,16 +327,16 @@ export class TwentyFortyEightGame {
 
           // if the piece above is empty, move the current piece up
           if (otherCellValue === -1) {
-            this.setCell(thisCellValue, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, thisCellValue)
+            this.setCell(yx, -1)
             noMoreMoves = false;
           }
 
           // if the piece above is the same, merge the two pieces
           if (otherCellValue === thisCellValue) {
             const delta = thisCellValue * 2
-            this.setCell(thisCellValue * 2, yx2)
-            this.setCell(-1, yx)
+            this.setCell(yx2, delta)
+            this.setCell(yx, -1)
             noMoreMoves = false;
             score += delta
           }
@@ -307,20 +347,9 @@ export class TwentyFortyEightGame {
     return score
   }
 
-  private getCell(cell: Coordinate) : number {
-    const index = cell.y * BOARD_WIDTH + cell.x
-    return this._board[index][USR_VALUE]
-  }
-
-  private setCell(value: number, cell: Coordinate) {
-    const index = cell.y * BOARD_WIDTH + cell.x
-    this._board[index][USR_VALUE] = value
-    this._board[index][USR_SETTER](value)
-  }
-
   private findRandomIndex() : number | null {
-    const indices = this._board.reduce((result: number[], value: UseStateResult<number>, index: number) => {
-      if (value[USR_VALUE] === -1) result.push(index)
+    const indices = this.board.reduce((result: number[], value: number, index: number) => {
+      if (value === -1) result.push(index)
       return result
     }, [])
 
@@ -343,33 +372,33 @@ export class TwentyFortyEightGame {
     for (let y = 0; y < BOARD_HEIGHT; y++) {
       for (let x = 0; x < BOARD_WIDTH; x++) {
         const index = y * BOARD_WIDTH + x;
-        const currentValue = this._board[index][USR_VALUE];
+        const currentValue = this.board[index];
 
         // Check if there is an empty cell adjacent to the current cell
-        if (x > 0 && this._board[index - 1][USR_VALUE] === -1) {
+        if (x > 0 && this.board[index - 1] === -1) {
           validTransitions.left = true;
         }
-        if (x < BOARD_WIDTH - 1 && this._board[index + 1][USR_VALUE] === -1) {
+        if (x < BOARD_WIDTH - 1 && this.board[index + 1] === -1) {
           validTransitions.right = true;
         }
-        if (y > 0 && this._board[index - BOARD_WIDTH][USR_VALUE] === -1) {
+        if (y > 0 && this.board[index - BOARD_WIDTH] === -1) {
           validTransitions.up = true;
         }
-        if (y < BOARD_HEIGHT - 1 && this._board[index + BOARD_WIDTH][USR_VALUE] === -1) {
+        if (y < BOARD_HEIGHT - 1 && this.board[index + BOARD_WIDTH] === -1) {
           validTransitions.down = true;
         }
 
         // Check if there is a cell with the same value adjacent to the current cell
-        if (x > 0 && this._board[index - 1][USR_VALUE] === currentValue) {
+        if (x > 0 && this.board[index - 1] === currentValue) {
           validTransitions.left = true;
         }
-        if (x < BOARD_WIDTH - 1 && this._board[index + 1][USR_VALUE] === currentValue) {
+        if (x < BOARD_WIDTH - 1 && this.board[index + 1] === currentValue) {
           validTransitions.right = true;
         }
-        if (y > 0 && this._board[index - BOARD_WIDTH][USR_VALUE] === currentValue) {
+        if (y > 0 && this.board[index - BOARD_WIDTH] === currentValue) {
           validTransitions.up = true;
         }
-        if (y < BOARD_HEIGHT - 1 && this._board[index + BOARD_WIDTH][USR_VALUE] === currentValue) {
+        if (y < BOARD_HEIGHT - 1 && this.board[index + BOARD_WIDTH] === currentValue) {
           validTransitions.down = true;
         }
       }
