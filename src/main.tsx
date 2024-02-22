@@ -1,6 +1,5 @@
-import { Devvit } from '@devvit/public-api';
-import { TwentyFortyEightGame } from './App.js';
-
+import { Devvit } from '@devvit/public-api'
+import { TwentyFortyEightGame } from './App.js'
 
 const colors: { [key: number]: string } = {
   [2]: 'khaki',
@@ -19,123 +18,166 @@ const colors: { [key: number]: string } = {
 
 const getColor = (value: number) => {
   if (value < 0) {
-    return 'lightgrey';
+    return 'Tan'
   }
-  return colors[value] || 'deeppink';
+  return colors[value] || 'deeppink'
 }
 
-// Define what packages you want to use here
-// Others include:
-// kvStore: a simple key value store for persisting data across sessions within this installation
-// media: used for importing and posting images
 Devvit.configure({
-  redditAPI: true, // context.reddit will now be available
-});
+  redditAPI: true,
+  redis: true,
+})
 
-/*
- * Use a menu action to create a custom post
- */
 Devvit.addMenuItem({
   label: 'New custom post',
   location: 'subreddit',
-  /*
-   * _ tells Typescript we don't care about the first argument
-   * The second argument is a Context object--here we use object destructuring to
-   * pull just the parts we need. The code below is equivalient
-   * to using context.reddit and context.ui
-   */
   onPress: async (_, { reddit, ui }) => {
-    const subreddit = await reddit.getCurrentSubreddit();
-
-    /*
-     * Submits the custom post to the specified subreddit
-     */
+    const subreddit = await reddit.getCurrentSubreddit()
     await reddit.submitPost({
-      // This will show while your custom post is loading
       preview: (
         <vstack padding="medium" cornerRadius="medium">
           <text style="heading" size="medium">
-            Loading custom post hello world...
+            Loading Tjueførtiåtte...
           </text>
         </vstack>
       ),
       title: `${subreddit.name} Hello Custom Post`,
       subredditName: subreddit.name,
-    });
+    })
 
     ui.showToast({
-      text: `Successfully created a Hello World custom post!`,
+      text: `Successfully created a shitty 2048 custom post!`,
       appearance: 'success',
-    });
+    })
   },
-});
+})
 
 Devvit.addCustomPostType({
   name: 'TwentyFortyEight',
-  /**
-   * You can optionally set the height of your post between 'regular' (320px) and 'tall' (512px)
-   */
-  height: 'regular',
-  /*
-   * The render function defines the custom post layout during rendering.
-   * It is called on load and after every user interaction (e.g. button click)
-   *
-   * Here, we simply use the context object directly, as opposed to how we
-   * handled it above in `onPress`.
-   */
+  height: 'tall',
   render: (context) => {
-    const game = new TwentyFortyEightGame(context);
-    game.setup();
+    const { useState, redis, reddit } = context
+    const game = new TwentyFortyEightGame(context)
+    game.setup()
+
+    const currentUser = useState(async () => {
+      const user = await reddit.getCurrentUser()
+      return user.username
+    })
+
+    const allTimeHighScore = useState(async () => {
+      const highScores = await redis.hgetall('highScores')
+      if (!highScores) {
+        console.log('no scores found at all')
+        return -1
+      }
+
+      const keys = Object.keys(highScores)
+      if (keys.length === 0) {
+        console.log('no keys on score object')
+        return -1
+      }
+
+      return Math.max(...keys.map((value) => Number(highScores[value])))
+    })
+
+    const playerBestScore = useState(async () => {
+      const user = await reddit.getCurrentUser()
+      const score = await redis.hget('highScores', user.username)
+      if (!score) {
+        console.log('no scores found for current player')
+        return -1
+      }
+
+      return Number(score)
+    })
 
     if (game.isGameOver()) {
+      const currentScore = game.getScore()
+      const currentBest = playerBestScore[0]
+      if (currentScore > currentBest) {
+        const score = `${currentScore}`
+        redis.hset('highScores', { [currentUser[0]]: score })
+      }
+
       return (
-        <vstack grow alignment='middle'>
-          <hstack grow alignment='middle'>
-            <vstack gap='small'>
-              <text>Game Over!</text>
-              <text>Your Score: {game.getScore()}</text>
-              <button onPress={() => game.reset()}>Just One More?</button>
-            </vstack>
-          </hstack>
-        </vstack>
+        <hstack backgroundColor='wheat' grow alignment='middle center'>
+          <vstack gap='medium'>
+            <text color='black' weight='bold' size='xxlarge' alignment='center'>Game Over!</text>
+            <text color='black' weight='bold' size='xlarge' alignment='center'>You scored {game.getScore()} points.</text>
+            <button onPress={() => game.reset()}>Just One More?</button>
+          </vstack>
+        </hstack>
       )
     } else {
       return (
-        <vstack padding="medium" cornerRadius="medium" gap="small" alignment="middle">
+        <vstack backgroundColor='Wheat' cornerRadius="medium" padding='medium' grow>
           <hstack gap='small'>
-            <text grow alignment='center'>Score: {game.getScore()}</text>
-            <button onPress={() => game.reset()}>Reset</button>
+            <vstack alignment='middle'>
+              <button appearance='destructive' onPress={() => game.reset()}>Reset</button>
+            </vstack>
+            <spacer grow />
+            <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
+              <text color='white' weight='bold' alignment='middle'>Score</text>
+              <text color='white' weight='bold' alignment='middle'>{game.getScore()}</text>
+            </vstack>
+            <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
+              <text color='white' weight='bold' alignment='middle'>Your Best</text>
+              <text color='white' weight='bold' alignment='middle'>{playerBestScore[0]}</text>
+            </vstack>
+            <vstack backgroundColor='Sienna' cornerRadius='small' borderColor='SaddleBrown' padding='small'>
+              <text color='white' weight='bold' alignment='middle'>All Time Best</text>
+              <text color='white' weight='bold' alignment='middle'>{allTimeHighScore[0]}</text>
+            </vstack>
           </hstack>
-          <vstack>
-            { game.getRows().map((row, y) => (
-              <hstack gap="small" alignment="middle">
-                { row.map((cell, x) => (
-                  <vstack
-                    width="48px"
-                    height="48px"
-                    cornerRadius="small"
-                    backgroundColor={getColor(cell)}
-                    borderColor='black'
-                    alignment="middle"
-                  >
-                    <text style="heading" size="medium" alignment='center'>
-                      {cell === -1 ? '' : cell}
-                    </text>
-                  </vstack>
-                ))}
-              </hstack>
-            )) }
-          </vstack>
-          <hstack>
-            <button onPress={() => game.testPlay('left')}>Left</button>
-            <button onPress={() => game.testPlay('right')}>Right</button>
-            <button onPress={() => game.testPlay('up')}>Up</button>
-            <button onPress={() => game.testPlay('down')}>Down</button>
+          <hstack alignment='middle center' grow>
+            <spacer grow />
+            <vstack backgroundColor='Burlywood' gap='small' alignment='middle' padding='small' cornerRadius='medium'> 
+              { game.getRows().map((row, y) => (
+                <hstack gap="small" alignment="middle">
+                  { row.map((cell, x) => (
+                    <vstack
+                      width="48px"
+                      height="48px"
+                      cornerRadius='small'
+                      backgroundColor={getColor(cell)}
+                      alignment="middle"
+                      border={game.isLastSpawned({ x, y }) ? 'thick' : 'none'}
+                      borderColor='darkgrey'
+                    >
+                      <text style="heading" size="large" alignment='center' color='black' weight='bold'>
+                        {cell === -1 ? '' : cell}
+                      </text>
+                    </vstack>
+                  ))}
+                </hstack>
+              )) }
+            </vstack>
+            <spacer grow />
+          </hstack>
+          <hstack grow alignment='middle center' gap='small'>
+            <button icon='back' onPress={() => game.testPlay('left')}></button>
+            <vstack gap='medium'>
+              <button icon='up-arrow' onPress={() => game.testPlay('up')}></button>
+              <button icon='down-arrow' onPress={() => game.testPlay('down')}></button>
+            </vstack>
+            <button icon='forward' onPress={() => game.testPlay('right')}></button>
           </hstack>
         </vstack>
-      );
+      )
     }
   },
-});
+})
 
-export default Devvit;
+Devvit.addTrigger({
+  events: ['AppUpgrade', 'AppInstall'],
+  async onEvent(_, context) {
+    const { redis } = context
+    const exists = await redis.hgetall('highScores')
+    if (!exists || Object.keys(exists).length === 0) {
+      await redis.hset('highScores', { 'devvit': '2048' })
+    }
+  }
+})
+
+export default Devvit
