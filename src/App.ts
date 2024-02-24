@@ -94,14 +94,15 @@ export class TwentyFortyEightGame {
 
     // an invalid result means nothing should spawn -- the board state wasn't changed
     else if (result === "invalid") {
-      return result;
+      //return result;
     }
 
     // if we're still here, then we should spawn a new piece.
     // in the event that we cannot do so, the game is over.
     const randomIndex = this.findRandomIndex();
     if (randomIndex === null) {
-      return "game_over";
+      return
+      //return "game_over";
     }
 
     // spawn a new piece
@@ -115,10 +116,10 @@ export class TwentyFortyEightGame {
     // determine if the game is over
     const validTransitions = this.determineValidStateTransitions();
     if (!this.anyValidMoves(validTransitions)) {
-      return "game_over";
+      //return "game_over";
     }
 
-    return result
+    //return result
   }
 
   get score(): number {
@@ -136,7 +137,6 @@ export class TwentyFortyEightGame {
 
   private set board(value: number[]) {
     this._board[USR_VALUE] = value
-    this._board[USR_SETTER](value)
   }
 
   private get lastSpawnedAt(): Coordinate {

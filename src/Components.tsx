@@ -71,6 +71,7 @@ const getBackgroundColour = (value: number) => {
   if (value < 0) {
     return 'Tan'
   }
+
   return backgroundColors[value] || 'deeppink'
 }
 
@@ -171,3 +172,11 @@ export const ControlBox = (props: ControlBoxProps) => {
     </hstack>
   )
 }
+
+export const Preview = () => (
+  <vstack padding="medium" cornerRadius="medium">
+    <text style="heading" size="medium">
+      Loading Tjueførtiåtte...
+    </text>
+  </vstack>
+)
