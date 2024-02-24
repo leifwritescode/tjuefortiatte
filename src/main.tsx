@@ -1,13 +1,18 @@
 import { Devvit } from '@devvit/public-api'
 import { generateDailyGameScheduledJob } from './Jobs.js'
-import { ensureRedisIsPrimedTrigger } from './Triggers.js'
+import { ensureChallengeGenerationJobIsRunningTrigger, ensureRedisIsPrimedTrigger } from './Triggers.js'
 import { generateManualGameMenuItem } from './MenuItems.js'
 import { twentyFortyEightCustomPost } from './CustomPost.js'
 
 Devvit.configure({ redditAPI: true, redis: true })
-Devvit.addMenuItem(generateManualGameMenuItem)
-Devvit.addTrigger(ensureRedisIsPrimedTrigger);
-Devvit.addSchedulerJob(generateDailyGameScheduledJob);
+
 Devvit.addCustomPostType(twentyFortyEightCustomPost)
+
+Devvit.addMenuItem(generateManualGameMenuItem)
+
+Devvit.addSchedulerJob(generateDailyGameScheduledJob)
+
+Devvit.addTrigger(ensureRedisIsPrimedTrigger)
+Devvit.addTrigger(ensureChallengeGenerationJobIsRunningTrigger)
 
 export default Devvit
