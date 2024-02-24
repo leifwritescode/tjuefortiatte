@@ -117,6 +117,6 @@ const generateDailyGameScheduledJobHandler: ScheduledJobHandler = async (event, 
 }
 
 export const generateDailyGameScheduledJob: ScheduledJobType = {
-  name: "Generate Daily Game",
+  name: "generateDailyGame",
   onRun: generateDailyGameScheduledJobHandler
 }
