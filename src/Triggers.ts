@@ -10,3 +10,23 @@ export const ensureRedisIsPrimedTrigger: MultiTriggerDefinition<"AppInstall" | "
     }
   }
 }
+
+export const ensureChallengeGenerationJobIsRunningTrigger: MultiTriggerDefinition<"AppInstall" | "AppUpgrade"> = {
+  events: ['AppUpgrade', 'AppInstall'],
+  async onEvent(_, context) {
+    const { scheduler } = context
+
+    // cancel all of the existing jobs
+    const jobs = await scheduler.listJobs()
+    const cancellations = jobs.map(async job => {
+      await scheduler.cancelJob(job.id)
+    })
+    await Promise.all(cancellations)
+
+    // and reschedule them
+    await scheduler.runJob({
+      name: 'generateDailyGame',
+      cron: "0 0 * * *"
+    })
+  }
+}
