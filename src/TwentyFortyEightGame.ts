@@ -1,34 +1,27 @@
-import { Context, UseStateResult } from "@devvit/public-api";
+import { Context } from "@devvit/public-api";
+import { Point } from "./types.js";
+import { GRID_DIMENSIONS } from "./constants.js";
+import State from "./State.js";
 
-interface Coordinate {
-  x: number,
-  y: number
-}
-
-export type Move = "up" | "down" | "left" | "right"
+type Move = "up" | "down" | "left" | "right"
 
 type MoveResult = number | "invalid" | "game_over"
-
-export const BOARD_WIDTH = 4
-export const BOARD_HEIGHT = 4;
-
-const USR_VALUE = 0;
-const USR_SETTER = 1;
 
 /**
  * I should modify the board state to be a simple array of numbers, as a first goal
 
  */
 
-export class TwentyFortyEightGame {
-  private _board: UseStateResult<number[]>
-  private _score: UseStateResult<number>
-  private _lastSpawnedAt: UseStateResult<Coordinate>
+export default class TwentyFortyEightGame {
+  private _board: State<number[]>
+  private _score: State<number>
+  private _lastSpawnedAt: State<Point>
 
-  constructor({ useState }: Context) {
-    this._board = useState(new Array(BOARD_WIDTH * BOARD_HEIGHT).fill(-1))
-    this._score = useState(0)
-    this._lastSpawnedAt = useState({ x: -1, y: -1 })
+  constructor(context: Context) {
+
+    this._board = new State(context, new Array(GRID_DIMENSIONS.w * GRID_DIMENSIONS.h).fill(-1))
+    this._score = new State(context, Number(0))
+    this._lastSpawnedAt = new State(context, { x: -1, y: -1 })
   }
 
   setup() {
@@ -107,8 +100,8 @@ export class TwentyFortyEightGame {
 
     // spawn a new piece
     // todo if the board state doesn't change, then we shouldn't spawn a new piece
-    const x = randomIndex % BOARD_WIDTH
-    const y = Math.floor(randomIndex / BOARD_WIDTH)
+    const x = randomIndex % GRID_DIMENSIONS.w
+    const y = Math.floor(randomIndex / GRID_DIMENSIONS.h)
     this.setCell({ x, y }, 2)
     this.lastSpawnedAt = { x, y }
 
@@ -123,47 +116,46 @@ export class TwentyFortyEightGame {
   }
 
   get score(): number {
-    return this._score[USR_VALUE]
+    return this._score.value
   }
 
   private set score(value: number) {
-    this._score[USR_VALUE] = value
-    this._score[USR_SETTER](value)
+    this._score.value = value
   }
 
   private get board(): number[] {
-    return this._board[USR_VALUE]
+    return this._board.value
   }
 
   private set board(value: number[]) {
-    this._board[USR_VALUE] = value
+    this._board.value = value
   }
 
-  private get lastSpawnedAt(): Coordinate {
-    return this._lastSpawnedAt[USR_VALUE]
+  private get lastSpawnedAt(): Point {
+    return this._lastSpawnedAt.value
   }
 
-  private set lastSpawnedAt(value: Coordinate) {
-    this._lastSpawnedAt[USR_VALUE] = value
-    this._lastSpawnedAt[USR_SETTER](value)
+  private set lastSpawnedAt(value: Point) {
+    this._lastSpawnedAt.value = value
   }
 
-  private getCell(coordinate: Coordinate) {
-    return this.board[coordinate.y * BOARD_WIDTH + coordinate.x]
+  private getCell(coordinate: Point) {
+    return this.board[coordinate.y * GRID_DIMENSIONS.w + coordinate.x]
   }
 
-  private setCell(coordinate: Coordinate, value: number) {
-    this.board[coordinate.y * BOARD_WIDTH + coordinate.x] = value
+  private setCell(coordinate: Point, value: number) {
+    this.board[coordinate.y * GRID_DIMENSIONS.w + coordinate.x] = value
   }
 
+  // this is now a no-op
   private updateBoard() {
-    this._board[USR_SETTER](this._board[USR_VALUE])
+    this._board.value = this._board.value
   }
 
   getRows(): number[][] {
     const rows: number[][] = []; 
-    for (let i = 0; i < BOARD_HEIGHT; i++) {
-      rows.push(this.board.slice(i * BOARD_WIDTH, (i + 1) * BOARD_WIDTH));
+    for (let i = 0; i < GRID_DIMENSIONS.h; i++) {
+      rows.push(this.board.slice(i * GRID_DIMENSIONS.w, (i + 1) * GRID_DIMENSIONS.w));
     }
     return rows;
   }
@@ -173,7 +165,7 @@ export class TwentyFortyEightGame {
     return !this.anyValidMoves(validTransitions);
   }
 
-  isLastSpawned(cell: Coordinate) {
+  isLastSpawned(cell: Point) {
     return this.lastSpawnedAt.x === cell.x && this.lastSpawnedAt.y === cell.y
   }
 
@@ -185,8 +177,8 @@ export class TwentyFortyEightGame {
       noMoreMoves = true;
 
       // start from the last row and work our way up
-      for (var y = BOARD_HEIGHT - 1; y > 0; y--) {
-        for (var x = 0; x < BOARD_WIDTH; x++) {
+      for (var y = GRID_DIMENSIONS.h - 1; y > 0; y--) {
+        for (var x = 0; x < GRID_DIMENSIONS.w; x++) {
           const yx = { x, y }
           const yx2 = { x, y: y - 1}
           const thisCellValue = this.getCell(yx)
@@ -227,8 +219,8 @@ export class TwentyFortyEightGame {
       noMoreMoves = true;
 
       // start from the first row and work our way down
-      for (var y = 0; y < BOARD_HEIGHT - 1; y++) {
-        for (var x = 0; x < BOARD_WIDTH; x++) {
+      for (var y = 0; y < GRID_DIMENSIONS.h - 1; y++) {
+        for (var x = 0; x < GRID_DIMENSIONS.w; x++) {
           const yx = { x, y }
           const yx2 = { x, y: y + 1 }
           const thisCellValue = this.getCell(yx)
@@ -268,8 +260,8 @@ export class TwentyFortyEightGame {
     while (!noMoreMoves) {
       noMoreMoves = true;
 
-      for (var x = BOARD_WIDTH - 1; x > 0; x--) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
+      for (var x = GRID_DIMENSIONS.w - 1; x > 0; x--) {
+        for (var y = 0; y < GRID_DIMENSIONS.h; y++) {
           const yx = { x, y }
           const yx2 = { x: x - 1 , y}
           const thisCellValue = this.getCell(yx)
@@ -309,8 +301,8 @@ export class TwentyFortyEightGame {
     while (!noMoreMoves) {
       noMoreMoves = true;
 
-      for (var x = 0; x < BOARD_WIDTH - 1; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
+      for (var x = 0; x < GRID_DIMENSIONS.w - 1; x++) {
+        for (var y = 0; y < GRID_DIMENSIONS.h; y++) {
           const yx = { x, y }
           const yx2 = { x: x + 1, y }
           const thisCellValue = this.getCell(yx)
@@ -365,22 +357,22 @@ export class TwentyFortyEightGame {
       right: false,
     };
 
-    for (let y = 0; y < BOARD_HEIGHT; y++) {
-      for (let x = 0; x < BOARD_WIDTH; x++) {
-        const index = y * BOARD_WIDTH + x;
+    for (let y = 0; y < GRID_DIMENSIONS.h; y++) {
+      for (let x = 0; x < GRID_DIMENSIONS.w; x++) {
+        const index = y * GRID_DIMENSIONS.w + x;
         const currentValue = this.board[index];
 
         // Check if there is an empty cell adjacent to the current cell
         if (x > 0 && this.board[index - 1] === -1) {
           validTransitions.left = true;
         }
-        if (x < BOARD_WIDTH - 1 && this.board[index + 1] === -1) {
+        if (x < GRID_DIMENSIONS.w - 1 && this.board[index + 1] === -1) {
           validTransitions.right = true;
         }
-        if (y > 0 && this.board[index - BOARD_WIDTH] === -1) {
+        if (y > 0 && this.board[index - GRID_DIMENSIONS.w] === -1) {
           validTransitions.up = true;
         }
-        if (y < BOARD_HEIGHT - 1 && this.board[index + BOARD_WIDTH] === -1) {
+        if (y < GRID_DIMENSIONS.h - 1 && this.board[index + GRID_DIMENSIONS.w] === -1) {
           validTransitions.down = true;
         }
 
@@ -388,13 +380,13 @@ export class TwentyFortyEightGame {
         if (x > 0 && this.board[index - 1] === currentValue) {
           validTransitions.left = true;
         }
-        if (x < BOARD_WIDTH - 1 && this.board[index + 1] === currentValue) {
+        if (x < GRID_DIMENSIONS.w - 1 && this.board[index + 1] === currentValue) {
           validTransitions.right = true;
         }
-        if (y > 0 && this.board[index - BOARD_WIDTH] === currentValue) {
+        if (y > 0 && this.board[index - GRID_DIMENSIONS.w] === currentValue) {
           validTransitions.up = true;
         }
-        if (y < BOARD_HEIGHT - 1 && this.board[index + BOARD_WIDTH] === currentValue) {
+        if (y < GRID_DIMENSIONS.h - 1 && this.board[index + GRID_DIMENSIONS.w] === currentValue) {
           validTransitions.down = true;
         }
       }

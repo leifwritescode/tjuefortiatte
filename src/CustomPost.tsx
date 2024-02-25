@@ -1,16 +1,35 @@
-import { CustomPostType, Devvit } from "@devvit/public-api";
-import { TwentyFortyEightGame } from "./App.js";
+import { Context, CustomPostType, Devvit } from "@devvit/public-api";
+import { TwentyFortyEightGame } from "./TwentyFortyEightGame.js";
 import { ScoreBox, GameBoard, ControlBox } from "./Components.js";
+import State from "./State.js";
+
+// contains score, target score, moves, target moves, and game state
+// the players goal is to reach the target score without exceeding the target moves
+const getDailyChallenge = async ({ postId, redis }: Context) => {
+  if (!postId) {
+    throw new Error('No postId provided')
+  }
+
+  const dailyChallenge = await redis.hget(postId, 'state')
+  if (!dailyChallenge) {
+    throw new Error('No daily challenge found')
+  }
+
+  return dailyChallenge
+}
+
+const getCurrentUser = async ({ reddit }: Context) : Promise<string> => {
+  const user = await reddit.getCurrentUser()
+  return user.username
+}
 
 const twentyFortyEightCustomPostComponent: Devvit.CustomPostComponent = (context) => {
   const { useState, redis, reddit } = context
+
   const game = new TwentyFortyEightGame(context)
   game.setup()
 
-  const currentUser = useState(async () => {
-    const user = await reddit.getCurrentUser()
-    return user.username
-  })
+  const currentUser = new State(context, async () => await getCurrentUser(context))
 
   const allTimeHighScore = useState(async () => {
     const highScores = await redis.hgetall('highScores')
@@ -44,7 +63,7 @@ const twentyFortyEightCustomPostComponent: Devvit.CustomPostComponent = (context
     const currentBest = playerBestScore[0]
     if (currentScore > currentBest) {
       const score = `${currentScore}`
-      redis.hset('highScores', { [currentUser[0]]: score })
+      redis.hset('highScores', { [currentUser.value]: score })
     }
 
     return (

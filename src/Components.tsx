@@ -1,5 +1,5 @@
 import { Devvit } from "@devvit/public-api";
-import { TwentyFortyEightGame } from "./App.js";
+import { TwentyFortyEightGame } from "./TwentyFortyEightGame.js";
 
 const backgroundColors: { [key: number]: string } = {
   [2]: 'khaki',
