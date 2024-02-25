@@ -1,5 +1,5 @@
 import { Context, CustomPostType, Devvit } from "@devvit/public-api";
-import { TwentyFortyEightGame } from "./TwentyFortyEightGame.js";
+import TwentyFortyEightGame from "./TwentyFortyEightGame.js";
 import { ScoreBox, GameBoard, ControlBox } from "./Components.js";
 import State from "./State.js";
 
@@ -27,7 +27,6 @@ const twentyFortyEightCustomPostComponent: Devvit.CustomPostComponent = (context
   const { useState, redis, reddit } = context
 
   const game = new TwentyFortyEightGame(context)
-  game.setup()
 
   const currentUser = new State(context, async () => await getCurrentUser(context))
 
@@ -58,7 +57,7 @@ const twentyFortyEightCustomPostComponent: Devvit.CustomPostComponent = (context
     return Number(score)
   })
 
-  if (game.isGameOver()) {
+  if (game.gameState === 'game_over') {
     const currentScore = game.score
     const currentBest = playerBestScore[0]
     if (currentScore > currentBest) {

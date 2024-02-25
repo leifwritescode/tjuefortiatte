@@ -1,11 +1,21 @@
 import { Context } from "@devvit/public-api";
-import { Point } from "./types.js";
+import { Point, Tile, TileValue } from "./types.js";
 import { GRID_DIMENSIONS } from "./constants.js";
 import State from "./State.js";
+import { G } from "vitest/dist/types-ad1c3f45.js";
 
 type Move = "up" | "down" | "left" | "right"
 
-type MoveResult = number | "invalid" | "game_over"
+type GameState = "in_play" | "game_over"
+
+type Board = Map<Point, Tile>
+
+const VECTORS = {
+  [ "up" ]: { x: 0, y: -1 },
+  [ "down" ]: { x: 0, y: 1 },
+  [ "left" ]: { x: -1, y: 0 },
+  [ "right" ]: { x: 1, y: 0 }
+}
 
 /**
  * I should modify the board state to be a simple array of numbers, as a first goal
@@ -13,106 +23,78 @@ type MoveResult = number | "invalid" | "game_over"
  */
 
 export default class TwentyFortyEightGame {
-  private _board: State<number[]>
+  private _board: State<Tile[]>
   private _score: State<number>
   private _lastSpawnedAt: State<Point>
+  private _currentGameState: State<GameState>
 
   constructor(context: Context) {
-
-    this._board = new State(context, new Array(GRID_DIMENSIONS.w * GRID_DIMENSIONS.h).fill(-1))
-    this._score = new State(context, Number(0))
-    this._lastSpawnedAt = new State(context, { x: -1, y: -1 })
-  }
-
-  setup() {
-    // set the initial state of the board
-    if (this.board.every((value) => value === -1)) {
-      const a = this.findRandomIndex()
-      const b = this.findRandomIndex();
-
-      let newBoard = this.board;
-      newBoard[a!] = 2
-      newBoard[b!] = 2
-
-      this.board = newBoard
-    }
+    this._board = new State<Tile[]>(context, [])
+    this._score = new State<number>(context, 0)
+    this._lastSpawnedAt = new State<Point>(context, { x: -1, y: -1 })
+    this._currentGameState = new State<GameState>(context, "in_play")
+    this.reset()
   }
 
   reset() {
-    for (var y = 0; y < 4; y++) {
-      for (var x = 0; x < 4; x++) {
-        this.setCell({ x, y }, -1)
-      }
+    const board = new Map<Point, Tile>()
+
+    const a = TwentyFortyEightGame.getRandomUnpopulatedCell(board)
+    if (!a) {
+      throw new Error('No unpopulated cells found')
+    } else {
+      board.set(a, { position: a, value: TwentyFortyEightGame.getNextTileValue() })
     }
 
-    this.setup()
+    const b = TwentyFortyEightGame.getRandomUnpopulatedCell(board)
+    if (!b) {
+      throw new Error('No unpopulated cells found')
+    } else {
+      board.set(b, { position: b, value: TwentyFortyEightGame.getNextTileValue() })
+    }
 
-    this.score = 0;
-    this.lastSpawnedAt = { x: -1, y: -1 }
+    this.board = Array.from(board.values())
+    this.score = 0
   }
 
   play(move: Move) {
-    // process the given movement
-    // and return the score 
-    // score increases when two pieces merge by the value of the new piece
-    // return "invalid" if the move is invalid
-    // return "game_over" if there are no valid moves left
+    const board: Board = this.board.reduce((acc: Map<Point, Tile>, tile) => {
+      acc.set(tile.position, tile)
+      return acc
+    }, new Map())
 
-    let result: MoveResult;
-    switch (move) {
-      case "up":
-        result = this.moveUp()
-        break
-      case "down":
-        result = this.moveDown()
-        break
-      case "left":
-        result = this.moveLeft()
-        break
-      case "right":
-        result = this.moveRight()
-        break
-      default:
-        throw new Error("Invalid move")
+    const updatedBoard = this.processRequestedMove(board, move)
+    if (!this.boardHasChanged(board, updatedBoard)) {
+      return // board didn't change, so we ignore the move
     }
 
-    // force-save the board state
-    this.updateBoard();
-
-    // if the result is a number, then one or more valid moves were made
-    // we can guarantee that a new piece can spawn under this condition
-    if (typeof result === "number") {
-      this.score += result
-    }
-
-    // an invalid result means nothing should spawn -- the board state wasn't changed
-    else if (result === "invalid") {
-      //return result;
-    }
-
-    // if we're still here, then we should spawn a new piece.
-    // in the event that we cannot do so, the game is over.
-    const randomIndex = this.findRandomIndex();
-    if (randomIndex === null) {
+    // board changed, so now we need to find an unpopulated cell to spawn a new piece
+    const spawnAt = TwentyFortyEightGame.getRandomUnpopulatedCell(updatedBoard)
+    if (!spawnAt) {
+      this.gameState = "game_over"
       return
-      //return "game_over";
     }
 
-    // spawn a new piece
-    // todo if the board state doesn't change, then we shouldn't spawn a new piece
-    const x = randomIndex % GRID_DIMENSIONS.w
-    const y = Math.floor(randomIndex / GRID_DIMENSIONS.h)
-    this.setCell({ x, y }, 2)
-    this.lastSpawnedAt = { x, y }
+    // next, spawn a tile at the unpopulated cell
+    const nextTileValue = TwentyFortyEightGame.getNextTileValue()
+    updatedBoard.set(spawnAt, { position: spawnAt, value: nextTileValue })
 
-
-    // determine if the game is over
-    const validTransitions = this.determineValidStateTransitions();
-    if (!this.anyValidMoves(validTransitions)) {
-      //return "game_over";
+    // lastly, determine if there are any legal moves following the spawn
+    if (this.isGameOver(updatedBoard)) {
+      this.gameState = "game_over"
+      return
     }
 
-    //return result
+    // and update the actual board
+    this.board = Array.from(updatedBoard.values())
+  }
+
+  get gameState(): GameState {
+    return this._currentGameState.value
+  }
+
+  private set gameState(value: GameState) {
+    this._currentGameState.value = value
   }
 
   get score(): number {
@@ -123,15 +105,15 @@ export default class TwentyFortyEightGame {
     this._score.value = value
   }
 
-  private get board(): number[] {
+  get board(): Tile[] {
     return this._board.value
   }
 
-  private set board(value: number[]) {
+  private set board(value: Tile[]) {
     this._board.value = value
   }
 
-  private get lastSpawnedAt(): Point {
+  get lastSpawnedAt(): Point {
     return this._lastSpawnedAt.value
   }
 
@@ -139,263 +121,107 @@ export default class TwentyFortyEightGame {
     this._lastSpawnedAt.value = value
   }
 
-  private getCell(coordinate: Point) {
-    return this.board[coordinate.y * GRID_DIMENSIONS.w + coordinate.x]
-  }
+  private processRequestedMove(board: Board, move: Move): Board {
+    const vector = VECTORS[move]
+    const copyOfBoard = board
 
-  private setCell(coordinate: Point, value: number) {
-    this.board[coordinate.y * GRID_DIMENSIONS.w + coordinate.x] = value
-  }
-
-  // this is now a no-op
-  private updateBoard() {
-    this._board.value = this._board.value
-  }
-
-  getRows(): number[][] {
-    const rows: number[][] = []; 
-    for (let i = 0; i < GRID_DIMENSIONS.h; i++) {
-      rows.push(this.board.slice(i * GRID_DIMENSIONS.w, (i + 1) * GRID_DIMENSIONS.w));
-    }
-    return rows;
-  }
-
-  isGameOver(): boolean {
-    const validTransitions = this.determineValidStateTransitions();
-    return !this.anyValidMoves(validTransitions);
-  }
-
-  isLastSpawned(cell: Point) {
-    return this.lastSpawnedAt.x === cell.x && this.lastSpawnedAt.y === cell.y
-  }
-
-  private moveUp() : MoveResult {
-    let noMoreMoves = false;
-    let score = 0;
-    
-    while (!noMoreMoves) {
-      noMoreMoves = true;
-
-      // start from the last row and work our way up
-      for (var y = GRID_DIMENSIONS.h - 1; y > 0; y--) {
-        for (var x = 0; x < GRID_DIMENSIONS.w; x++) {
-          const yx = { x, y }
-          const yx2 = { x, y: y - 1}
-          const thisCellValue = this.getCell(yx)
-          const otherCellValue = this.getCell(yx2)
-
-          // if the current piece is empty, skip
-          if (thisCellValue === -1) {
-            continue;
-          }
-
-          // if the piece above is empty, move the current piece up
-          if (otherCellValue === -1) {
-            this.setCell(yx2, thisCellValue, )
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-          }
-
-          // if the piece above is the same, merge the two pieces
-          if (otherCellValue === thisCellValue) {
-            const delta = thisCellValue * 2
-            this.setCell(yx2, delta)
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-            score += delta
-          }
-        }
-      }
-    }
-
-    return score
-  }
-
-  private moveDown() : MoveResult {
-    let noMoreMoves = false;
     let score = 0
-    
-    while (!noMoreMoves) {
-      noMoreMoves = true;
+    let moved: boolean
 
-      // start from the first row and work our way down
-      for (var y = 0; y < GRID_DIMENSIONS.h - 1; y++) {
-        for (var x = 0; x < GRID_DIMENSIONS.w; x++) {
-          const yx = { x, y }
-          const yx2 = { x, y: y + 1 }
-          const thisCellValue = this.getCell(yx)
-          const otherCellValue = this.getCell(yx2)
+    do {
+      moved = false
 
-          // if the current piece is empty, skip
-          if (thisCellValue === -1) {
-            continue;
-          }
+      // get all of the unpopulated cells
+      const unpopulatedCells = TwentyFortyEightGame.getUnpopulatedCells(copyOfBoard)
 
-          // if the piece above is empty, move the current piece up
-          if (otherCellValue === -1) {
-            this.setCell(yx2, thisCellValue)
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-          }
+      copyOfBoard.forEach((tile, position) => {
+        const nextPosition = { x: position.x + vector.x, y: position.y + vector.y }
 
-          // if the piece above is the same, merge the two pieces
-          if (otherCellValue === thisCellValue) {
-            const delta = thisCellValue * 2
-            this.setCell(yx2, delta)
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-            score += delta
-          }
+        // if the next position is out of bounds, skip
+        if (nextPosition.x < 0 || nextPosition.x >= GRID_DIMENSIONS.w || nextPosition.y < 0 || nextPosition.y >= GRID_DIMENSIONS.h) {
+          return
         }
+
+        // if the next position is unpopulated, move the current piece to the next position
+        if (unpopulatedCells.some(cell => cell.x === nextPosition.x && cell.y === nextPosition.y)) {
+          copyOfBoard.set(nextPosition, tile)
+          copyOfBoard.delete(position)
+          moved = true
+        }
+
+        // if the next position is populated and has the same value, merge the two pieces
+        else if (copyOfBoard.get(nextPosition)!.value === tile.value) {
+          const delta = tile.value * 2 as TileValue
+          copyOfBoard.set(nextPosition, { position: nextPosition, value: delta })
+          copyOfBoard.delete(position)
+          moved = true
+          score += delta
+        }
+      })
+    } while (moved)
+
+    return copyOfBoard
+  }
+
+  private boardHasChanged(a: Board, b: Board): boolean {
+    if (a.size !== b.size) {
+      return true
+    }
+
+    for (const [position, tile] of a) {
+      if (!b.has(position) || b.get(position)!.value !== tile.value) {
+        return true
       }
     }
 
-    return score
+    return false
   }
 
-  private moveLeft() : MoveResult {
-    let noMoreMoves = false;
-    let score = 0
-    
-    while (!noMoreMoves) {
-      noMoreMoves = true;
-
-      for (var x = GRID_DIMENSIONS.w - 1; x > 0; x--) {
-        for (var y = 0; y < GRID_DIMENSIONS.h; y++) {
-          const yx = { x, y }
-          const yx2 = { x: x - 1 , y}
-          const thisCellValue = this.getCell(yx)
-          const otherCellValue = this.getCell(yx2)
-
-          // if the current piece is empty, skip
-          if (thisCellValue === -1) {
-            continue;
-          }
-
-          // if the piece above is empty, move the current piece up
-          if (otherCellValue === -1) {
-            this.setCell(yx2, thisCellValue)
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-          }
-
-          // if the piece above is the same, merge the two pieces
-          if (otherCellValue === thisCellValue) {
-            const delta = thisCellValue * 2
-            this.setCell(yx2, delta)
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-            score += delta
-          }
-        }
-      }
-    }
-
-    return score
-  }
-
-  private moveRight() : MoveResult {
-    let noMoreMoves = false;
-    let score = 0
-    
-    while (!noMoreMoves) {
-      noMoreMoves = true;
-
-      for (var x = 0; x < GRID_DIMENSIONS.w - 1; x++) {
-        for (var y = 0; y < GRID_DIMENSIONS.h; y++) {
-          const yx = { x, y }
-          const yx2 = { x: x + 1, y }
-          const thisCellValue = this.getCell(yx)
-          const otherCellValue = this.getCell(yx2)
-
-          // if the current piece is empty, skip
-          if (thisCellValue === -1) {
-            continue;
-          }
-
-          // if the piece above is empty, move the current piece up
-          if (otherCellValue === -1) {
-            this.setCell(yx2, thisCellValue)
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-          }
-
-          // if the piece above is the same, merge the two pieces
-          if (otherCellValue === thisCellValue) {
-            const delta = thisCellValue * 2
-            this.setCell(yx2, delta)
-            this.setCell(yx, -1)
-            noMoreMoves = false;
-            score += delta
-          }
-        }
-      }
-    }
-
-    return score
-  }
-
-  private findRandomIndex() : number | null {
-    const indices = this.board.reduce((result: number[], value: number, index: number) => {
-      if (value === -1) result.push(index)
-      return result
-    }, [])
-
-    // If there are no -1 values in the array, return null
-    if (indices.length === 0) return null
-
-    // Select a random index from the list of indices
-    const randomIndex = Math.floor(Math.random() * indices.length)
-    return indices[randomIndex]
-  }
-
-  private determineValidStateTransitions() : { [key in Move]: boolean } {
-    const validTransitions: { [key in Move]: boolean } = {
-      up: false,
-      down: false,
-      left: false,
-      right: false,
-    };
+  private static getUnpopulatedCells(board: Board) : Point[] {
+    const unpopulatedCells: Point[] = [];
 
     for (let y = 0; y < GRID_DIMENSIONS.h; y++) {
       for (let x = 0; x < GRID_DIMENSIONS.w; x++) {
-        const index = y * GRID_DIMENSIONS.w + x;
-        const currentValue = this.board[index];
-
-        // Check if there is an empty cell adjacent to the current cell
-        if (x > 0 && this.board[index - 1] === -1) {
-          validTransitions.left = true;
-        }
-        if (x < GRID_DIMENSIONS.w - 1 && this.board[index + 1] === -1) {
-          validTransitions.right = true;
-        }
-        if (y > 0 && this.board[index - GRID_DIMENSIONS.w] === -1) {
-          validTransitions.up = true;
-        }
-        if (y < GRID_DIMENSIONS.h - 1 && this.board[index + GRID_DIMENSIONS.w] === -1) {
-          validTransitions.down = true;
-        }
-
-        // Check if there is a cell with the same value adjacent to the current cell
-        if (x > 0 && this.board[index - 1] === currentValue) {
-          validTransitions.left = true;
-        }
-        if (x < GRID_DIMENSIONS.w - 1 && this.board[index + 1] === currentValue) {
-          validTransitions.right = true;
-        }
-        if (y > 0 && this.board[index - GRID_DIMENSIONS.w] === currentValue) {
-          validTransitions.up = true;
-        }
-        if (y < GRID_DIMENSIONS.h - 1 && this.board[index + GRID_DIMENSIONS.w] === currentValue) {
-          validTransitions.down = true;
+        const cell = { x, y }
+        if (!board.has(cell)) {
+          unpopulatedCells.push(cell);
         }
       }
     }
-
-    return validTransitions;
+  
+    return unpopulatedCells;
   }
 
-  private anyValidMoves(moves: { [key in Move]: boolean }) : boolean {
-    return Object.values(moves).some((value) => value)
+  private static getRandomUnpopulatedCell(board: Board) : Point | undefined {
+    const unpopulatedCells = this.getUnpopulatedCells(board);
+    if (unpopulatedCells.length === 0) {
+      return undefined;
+    }
+
+    const randomIndex = Math.floor(Math.random() * unpopulatedCells.length);
+    return unpopulatedCells[randomIndex];
+  }
+
+  private static getNextTileValue(): TileValue {
+    const value = Math.round(Math.random() * 2) + 2
+    return value as TileValue // we can guarantee that value is either 2 or 4
+  }
+
+  private isGameOver(board: Board): Boolean {
+    let validMoveFound = false;
+    board.forEach((tile, position) => {
+      const adjacentCells = [
+        { x: position.x - 1, y: position.y },
+        { x: position.x + 1, y: position.y },
+        { x: position.x, y: position.y - 1 },
+        { x: position.x, y: position.y + 1 }
+      ]
+
+      // a valid move is found if either the adjacent cell is unpopulated or has the same value as the current cell
+      validMoveFound = validMoveFound || adjacentCells.some(cell => {
+        return !board.has(cell) && board.get(cell)!.value === tile.value
+      })
+    })
+    return validMoveFound
   }
 }

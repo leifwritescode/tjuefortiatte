@@ -125,11 +125,15 @@ interface GameBoardProps {
   game: TwentyFortyEightGame
 }
 
+const f = (x: TwentyFortyEightGame) => {
+  x.board
+}
+
 export const GameBoard = (props: GameBoardProps) => {
   const { game } = props;
   return (
     <vstack backgroundColor='Burlywood' gap='small' alignment='middle' padding='small' cornerRadius='medium'>
-      { game.getRows().map((row, y) => (
+      { game.boardmap((row, y) => (
         <hstack gap="small" alignment="middle">
           { row.map((cell, x) => (
             <Cell x={x} y={y} game={game} value={cell} />
