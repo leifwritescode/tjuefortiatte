@@ -1,5 +1,7 @@
 import { Devvit } from "@devvit/public-api";
-import { TwentyFortyEightGame } from "./TwentyFortyEightGame.js";
+import TwentyFortyEightGame from "./TwentyFortyEightGame.js";
+import { GRID_DIMENSIONS } from "./constants.js";
+import { Tile } from "./types.js";
 
 const backgroundColors: { [key: number]: string } = {
   [2]: 'khaki',
@@ -107,7 +109,7 @@ export const Cell = (props: CellProps) => {
       cornerRadius='small'
       backgroundColor={getBackgroundColour(value)}
       alignment="middle"
-      border={game.isLastSpawned({ x, y }) ? 'thick' : 'none'}
+      border={game.lastSpawnedAt({ x, y }) ? 'thick' : 'none'}
       borderColor={getContrastColour(value)}>
       <text
         style="heading"
@@ -130,13 +132,21 @@ const f = (x: TwentyFortyEightGame) => {
 }
 
 export const GameBoard = (props: GameBoardProps) => {
-  const { game } = props;
+  const { game } = props
+  const board = game.board
+
+  // renderable board needs to be a 2D array...
+  const renderableBoard: (Tile | null)[][] = Array.from({ length: GRID_DIMENSIONS.h }, () => Array.from({ length: GRID_DIMENSIONS.w }))
+  board.forEach((tile) => {
+    renderableBoard[tile.position.y][tile.position.x] = tile
+  })
+
   return (
     <vstack backgroundColor='Burlywood' gap='small' alignment='middle' padding='small' cornerRadius='medium'>
-      { game.boardmap((row, y) => (
+      { renderableBoard.map((row, y) => (
         <hstack gap="small" alignment="middle">
-          { row.map((cell, x) => (
-            <Cell x={x} y={y} game={game} value={cell} />
+          { row.map((tile, x) => (
+            <Cell x={x} y={y} game={game} value={tile?.value || -1} />
           ))}
         </hstack>
       )) }
